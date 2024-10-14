@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clasificación de Estudiantes</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="toggle-switch">
+                <input type="checkbox" id="darkModeToggle">
+                <label for="darkModeToggle" class="slider"></label>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="card shadow-sm p-4 mb-5 bg-white rounded">
+            <h1 class="text-center mb-4">Clasificación de Estudiantes</h1>
+            <form id="studentForm">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="nombre" class="form-label">Nombre</label>
+                        <input type="text" id="nombre" name="nombre" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edad" class="form-label">Edad</label>
+                        <input type="number" id="edad" name="edad" class="form-control" required>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="nota" class="form-label">Nota</label>
+                        <input type="number" id="nota" name="nota" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="comportamiento" class="form-label">Comportamiento</label>
+                        <input type="number" id="comportamiento" name="comportamiento" class="form-control" step="0.01" required>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary mt-3" onclick="mostrarResultado()">Predecir Grupo</button>
+                </div>
+            </form>
+
+            <!-- Espacio para mostrar los resultados -->
+            <div class="mt-5" id="resultadoContainer" style="display: none;">
+                <h3>Resultado:</h3>
+                <p id="resultadoTexto"></p>
+            </div>
+        </div>
+
+        <!-- Sección para cargar CSV y mostrar tabla -->
+        <div class="card shadow-sm p-4 mb-5 bg-white rounded">
+            <h2 class="text-center mb-4">Estudiantes Registrados</h2>
+            <table class="table mt-4" id="csvTable">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Edad</th>
+                        <th>Nota</th>
+                        <th>Comportamiento</th>
+                        <th>Grupo</th>
+                    </tr>
+                </thead>
+                <tbody id="csvTableBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Gráfico con Chart.js -->
+        <div class="card shadow-sm p-4 mb-5 bg-white rounded">
+            <h2 class="text-center mb-4">Gráfico de Clasificación</h2>
+            <canvas id="classificationChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Agregar el script de Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/toggle.js"></script>
+
+    <script>
+        
+        let chart;
+        let estudiantes = [];
+
+        function mostrarResultado() {
+            const nombre = document.getElementById('nombre').value;
+            const edad = document.getElementById('edad').value;
+            const nota = document.getElementById('nota').value;
+            const comportamiento = document.getElementById('comportamiento').value;
+
+            const grupo = (nota >= 14 && comportamiento >= 7) ? "Grupo A" : "Grupo B";
+
+            // Mostrar el resultado en la página
+            const resultadoContainer = document.getElementById('resultadoContainer');
+            const resultadoTexto = document.getElementById('resultadoTexto');
+            resultadoTexto.innerHTML = `El estudiante ${nombre}, de ${edad} años, ha sido clasificado en el <strong>${grupo}</strong>.`;
+            resultadoContainer.style.display = 'block';
+
+            // Actualizar la tabla y el gráfico
+            agregarEstudiante(nombre, edad, nota, comportamiento, grupo);
+            actualizarTabla();
+            actualizarGrafico();
+        }
+
+        function agregarEstudiante(nombre, edad, nota, comportamiento, grupo) {
+            estudiantes.push({ nombre, edad, nota, comportamiento, grupo });
+        }
+
+        function actualizarTabla() {
+            const tableBody = document.getElementById('csvTableBody');
+            tableBody.innerHTML = '';
+
+            estudiantes.forEach(estudiante => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${estudiante.nombre}</td>
+                    <td>${estudiante.edad}</td>
+                    <td>${estudiante.nota}</td>
+                    <td>${estudiante.comportamiento}</td>
+                    <td>${estudiante.grupo}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function actualizarGrafico() {
+            const ctx = document.getElementById('classificationChart').getContext('2d');
+
+            // Crear los datos del gráfico de dispersión
+            const dataGrupoA = estudiantes
+                .filter(est => est.grupo === 'Grupo A')
+                .map(est => ({ x: est.nota, y: est.comportamiento }));
+
+            const dataGrupoB = estudiantes
+                .filter(est => est.grupo === 'Grupo B')
+                .map(est => ({ x: est.nota, y: est.comportamiento }));
+
+            // Si el gráfico ya está creado, lo actualizamos
+            if (!chart) {
+                chart = new Chart(ctx, {
+                    type: 'scatter', // Tipo de gráfico: scatter (dispersión)
+                    data: {
+                        datasets: [
+                            {
+                                label: 'Grupo A',
+                                data: dataGrupoA, // Datos de Grupo A
+                                backgroundColor: '#007bff',
+                                borderColor: '#007bff',
+                                showLine: false, // No mostrar líneas
+                                pointRadius: 5 // Tamaño de los puntos
+                            },
+                            {
+                                label: 'Grupo B',
+                                data: dataGrupoB, // Datos de Grupo B
+                                backgroundColor: '#28a745',
+                                borderColor: '#28a745',
+                                showLine: false, // No mostrar líneas
+                                pointRadius: 5 // Tamaño de los puntos
+                            }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                min: 0,  // Ajustar el mínimo de la escala de notas
+                                max: 20, // Ajustar el máximo de la escala de notas
+                                title: {
+                                    display: true,
+                                    text: 'Nota'
+                                }
+                            },
+                            y: {
+                                min: 0,  // Ajustar el mínimo de la escala de comportamiento
+                                max: 20, // Ajustar el máximo de la escala de comportamiento
+                                ticks: {
+                                    stepSize: 1,  // Mostrar incrementos de 1 en el eje Y
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Comportamiento'
+                                }
+                            }
+                        },
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+            } else {
+                chart.data.datasets[0].data = dataGrupoA;
+                chart.data.datasets[1].data = dataGrupoB;
+                chart.update();
+            }
+        }
+
+        // Función para guardar la imagen del gráfico
+        function guardarImagen() {
+            const link = document.createElement('a');
+            link.download = 'grafico_clasificacion.png'; // Nombre del archivo
+            link.href = document.getElementById('classificationChart').toDataURL('image/png'); // Obtener la imagen
+            link.click(); // Simular clic en el enlace
+        }
+    
+    </script>
+</body>
+</html>
